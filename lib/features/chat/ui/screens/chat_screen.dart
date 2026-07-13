@@ -11,8 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-/// Entry point for the chat feature.
-/// Provides [ChatCubit] scoped to this widget subtree.
 class ChatScreen extends StatelessWidget {
   const ChatScreen({super.key});
 
@@ -37,8 +35,6 @@ class _ChatScreenViewState extends State<ChatScreenView> {
   final ScrollController _scrollController = ScrollController();
   bool _isScrolling = false;
 
-  /// Local conversation history displayed in the ListView.
-  /// Both user and model messages are stored here.
   final List<ChatMessageModel> _messages = [];
 
   @override
@@ -48,7 +44,6 @@ class _ChatScreenViewState extends State<ChatScreenView> {
     super.dispose();
   }
 
-  /// Smoothly scrolls the list to the most recent message.
   void _scrollToBottom() {
     if (_scrollController.hasClients && !_isScrolling) {
       _isScrolling = true;
@@ -68,12 +63,9 @@ class _ChatScreenViewState extends State<ChatScreenView> {
     }
   }
 
-  /// Called when the user taps Send.
-  /// Adds the user message locally, then dispatches the API call.
   void _handleSend(String text) {
     if (text.trim().isEmpty) return;
 
-    // ── 1. Create the user message ────────────────────────────
     final userMessage = ChatMessageModel(
       role: 'user',
       text: text.trim(),
@@ -87,7 +79,6 @@ class _ChatScreenViewState extends State<ChatScreenView> {
     _controller.clear();
     _scrollToBottom();
 
-    // ── 2. Dispatch to cubit (sends to API) ───────────────────
     context.read<ChatCubit>().sendMessages(messages: _messages);
   }
 
@@ -101,26 +92,24 @@ class _ChatScreenViewState extends State<ChatScreenView> {
         body: SafeArea(
           child: Stack(
             children: [
-              // ── Message list ──────────────────────────────────
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.w),
                 child: BlocConsumer<ChatCubit, ChatState>(
                   listener: (context, state) {
                     if (state is ChatSuccess) {
-                      // Append the AI reply to the local history
                       setState(() {
                         _messages.add(state.chatMessage);
                       });
                       _scrollToBottom();
                     } else if (state is ChatFailure) {
-                      // Scroll so the error bubble is visible
                       _scrollToBottom();
                     }
                   },
                   builder: (context, state) {
                     final isLoading = state is ChatLoading;
-                    final errorMessage =
-                        state is ChatFailure ? state.errMsg : null;
+                    final errorMessage = state is ChatFailure
+                        ? state.errMsg
+                        : null;
 
                     return ListView.builder(
                       controller: _scrollController,
@@ -129,26 +118,20 @@ class _ChatScreenViewState extends State<ChatScreenView> {
                           _messages.length +
                           (isLoading || errorMessage != null ? 1 : 0),
                       itemBuilder: (context, index) {
-                        // ── Loading indicator ─────────────────
                         if (isLoading && index == _messages.length) {
                           return loadingBubble();
                         }
 
-                        // ── Error bubble ──────────────────────
-                        if (errorMessage != null &&
-                            index == _messages.length) {
+                        if (errorMessage != null && index == _messages.length) {
                           return ErrorBubble(
                             errorMessage: errorMessage,
-                            // Retry: resend the current conversation
+
                             onPressed: () => context
                                 .read<ChatCubit>()
                                 .sendMessages(messages: _messages),
                           );
                         }
 
-                        // ── Normal message bubble ─────────────
-                        // role == "user"  → sender bubble (right)
-                        // role == "model" → receiver bubble (left)
                         final message = _messages[index];
                         return message.isUser
                             ? ChatBubbleSender(text: message.text)
@@ -159,7 +142,6 @@ class _ChatScreenViewState extends State<ChatScreenView> {
                 ),
               ),
 
-              // ── Input bar ─────────────────────────────────────
               Positioned(
                 left: 16.w,
                 right: 16.w,
